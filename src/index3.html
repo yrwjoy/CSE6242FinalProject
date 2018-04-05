@@ -68,11 +68,11 @@ d3.json("https://gist.githubusercontent.com/mbostock/4090846/raw/d534aba16920754
 
  g.append("g")
       .attr("id", "counties")
-    .selectAll("path")
+      .selectAll("path")
       .data(topojson.feature(us, us.objects.counties).features)
-    .enter().append("path")
-  .attr("d", path)
-  .attr("class", "county-boundary");
+      .enter().append("path")
+      .attr("d", path)
+      .attr("class", "county-boundary");
     //   .on("click", countyclicked);
 
   g.append("g")
