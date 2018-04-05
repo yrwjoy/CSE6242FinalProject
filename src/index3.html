@@ -30,9 +30,9 @@
   stroke-width: .5px;
 }
 
-.county-boundary:hover, .state:hover {
+/* .county-boundary:hover, .state:hover {
   fill: orange;
-}
+} */
 
 </style>
 <body>
@@ -59,21 +59,27 @@ svg.append("rect")
     .attr("class", "background")
     .attr("width", width)
     .attr("height", height)
-    .on("click", clicked);
+    .on("dblclick", clicked);
 
 var g = svg.append("g");
 
-d3.json("https://gist.githubusercontent.com/mbostock/4090846/raw/d534aba169207548a8a3d670c9c2cc719ff05c47/us.json", function(error, us) {
+var tooltip = d3.select("body")
+	.append("div")
+	.style("position", "absolute");
 
+d3.json("https://gist.githubusercontent.com/mbostock/4090846/raw/d534aba169207548a8a3d670c9c2cc719ff05c47/us.json", function(error, us) {
 
  g.append("g")
       .attr("id", "counties")
-      .selectAll("path")
+    .selectAll("path")
       .data(topojson.feature(us, us.objects.counties).features)
-      .enter().append("path")
-      .attr("d", path)
-      .attr("class", "county-boundary");
-    //   .on("click", countyclicked);
+    .enter().append("path")
+  .attr("d", path)
+  .attr("class", "county-boundary")
+  .on("dblclick", countystateclicked)
+  // .on("mouseover", handleMouseOver)
+  .on("mouseout", handleMouseOut)
+      .on("mouseover", countyclicked);
 
   g.append("g")
       .attr("id", "states")
@@ -82,13 +88,28 @@ d3.json("https://gist.githubusercontent.com/mbostock/4090846/raw/d534aba16920754
     .enter().append("path")
   .attr("d", path)
   .attr("class", "state")
-      .on("click", clicked);
+      .on("dblclick", clicked)
+      // .on("mouseover", handleMouseOver)
+      .on("mouseout", handleMouseOut)
+      .on("mouseover", stateclicked);
 
 
   g.append("path")
       .datum(topojson.mesh(us, us.objects.states, function(a, b) { return a !== b; }))
       .attr("id", "state-borders")
       .attr("d", path);
+
+// function handleMouseOver(d) {  
+
+// d3.select(this).style("fill","orange");
+
+// }
+
+function handleMouseOut(d) {
+
+d3.select(this).style("fill", "#aaa");
+
+}
 });
 
 
@@ -110,6 +131,8 @@ function clicked(d) {
 
   g.selectAll("path")
       .classed("active", centered && function(d) { return d === centered; });
+  
+    console.log([x,y]);
 
   g.transition()
       .duration(750)
@@ -117,9 +140,47 @@ function clicked(d) {
       .style("stroke-width", 1.5 / k + "px");
 }
 
-function countyclicked(d) {
-  alert(d.id);
+function countystateclicked(d) {
+  var x, y, k;
+
+  if (d && centered !== d) {
+    var centroid = path.centroid(d);
+    x = centroid[0];
+    y = centroid[1];
+    k = 1;
+    centered = d;
+  } else {
+    x = width / 2;
+    y = height / 2;
+    k = 1;
+    centered = null;
+  }
+
+  g.selectAll("path")
+      .classed("active", centered && function(d) { return d === centered; });
+
+    console.log([x,y]);
+
+  g.transition()
+      .duration(750)
+      .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")scale(" + k + ")translate(" + -480 + "," + -250 + ")")
+      .style("stroke-width", 1.5 / k + "px");
 }
+
+function countyclicked(d) {
+
+  d3.select(this).style("fill","orange");
+  tooltip.style("visibility", "visible")
+          .text(d.id);
+}
+
+function stateclicked(d) {
+
+  d3.select(this).style("fill","orange");
+  tooltip.style("visibility", "visable")
+          .text(d.id);
+}
+
 
 </script>
 
