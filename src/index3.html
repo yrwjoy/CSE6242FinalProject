@@ -30,6 +30,17 @@
   stroke-width: .5px;
 }
 
+.d3-tip {
+    line-height: 1.5;
+    font-weight: 400;
+    font-family:"avenir next", Arial, sans-serif;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border-radius: 1px;
+    pointer-events: none;
+    }
+
 /* .county-boundary:hover, .state:hover {
   fill: orange;
 } */
@@ -38,11 +49,17 @@
 <body>
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script src="http://d3js.org/topojson.v1.min.js"></script>
+<script src="https://d3js.org/d3-queue.v3.min.js"></script>
+<script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
 <script>
 
 var width = 960,
     height = 500,
     centered;
+
+var color = d3.scale.threshold()
+                    .domain([50, 200, 400, 800, 1500, 2500, 4000, 6500])
+                    .range(["#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#4292c6", "#2171b5","#08519c","#08306b"]);
 
 var projection = d3.geo.albersUsa()
     .scale(1070)
@@ -63,11 +80,83 @@ svg.append("rect")
 
 var g = svg.append("g");
 
-var tooltip = d3.select("body")
-	.append("div")
-	.style("position", "absolute");
+// var tooltip = d3.select("body")
+// 	.append("div")
+// 	.style("position", "absolute");
 
-d3.json("https://gist.githubusercontent.com/mbostock/4090846/raw/d534aba169207548a8a3d670c9c2cc719ff05c47/us.json", function(error, us) {
+d3.queue()
+    .defer(d3.json, "us.json")
+    .defer(d3.csv, "state_house_values.csv")
+    .defer(d3.csv, "county_house_values.csv")
+    .await(ready);
+
+function ready(error, us, statedata, countydata) {
+    var stateById = {};
+    var stateByname = {};
+    var ThetaByIdAll = {};
+    var countyById = {};
+    var countyByname = {};
+
+    statedata.forEach(function(d){
+      stateById[d.RegionID] = +d.RegionID;
+      stateByname[d.RegionID] = d.RegionName;
+      if(d.Housetype == "Allhome") {
+      ThetaByIdAll[d.RegionID] = +d.Theta;}});
+
+    countydata.forEach(function(d){
+      countyById[d.RegionID] = +d.RegionID;
+      countyByname[d.RegionID] = d.RegionName;});
+
+    var format = d3.time.format("%b-%y").parse;
+    console.log(format("Apr-96"));
+    
+    var alldate = ["Apr-96", "May-96", "Jun-96", "Jul-96", "Aug-96","Sep-96","Oct-96","Nov-96", "Dec-96", 
+              "Jan-97", "Feb-97", "Mar-97", "Apr-97", "May-97", "Jun-97", "Jul-97", "Aug-97","Sep-97","Oct-97","Nov-97", "Dec-97", 
+              "Jan-98", "Feb-98", "Mar-98", "Apr-98", "May-98", "Jun-98", "Jul-98", "Aug-98","Sep-98","Oct-98","Nov-98", "Dec-98", 
+              "Jan-99", "Feb-99", "Mar-99", "Apr-99", "May-99", "Jun-99", "Jul-99", "Aug-99","Sep-99","Oct-99","Nov-99", "Dec-99", 
+              "Jan-00", "Feb-00", "Mar-00", "Apr-00", "May-00", "Jun-00", "Jul-00", "Aug-00","Sep-00","Oct-00","Nov-00", "Dec-00", 
+              "Jan-01", "Feb-01", "Mar-01", "Apr-01", "May-01", "Jun-01", "Jul-01", "Aug-01","Sep-01","Oct-01","Nov-01", "Dec-01", ];
+
+    // var processedstatedata = [];
+    //                   for (i=0;i<alldate.length;i++) {
+    //                         processedstatedata.push(statedata.map(function(d){
+    //                             return {
+    //                             name: d.RegionName,
+    //                             type: d.Housetype,
+    //                             id: d.RegionID,
+    //                             price: d[alldate[i]],
+    //                             date: alldate[i]                               
+    //                           }
+    //                      }))};
+
+    // var processedstatedata1 = statedata.map(function(d){
+    //                             return {
+    //                             name: d.RegionName,
+    //                             type: d.Housetype,
+    //                             id: d.RegionID,
+    //                             price: d["Apr-96"],
+    //                             date: "Apr-96"                               
+    //                           }});
+
+    // var processedstatedata2 = statedata.map(function(d){
+    //                             return {
+    //                             name: d.RegionName,
+    //                             type: d.Housetype,
+    //                             id: d.RegionID,
+    //                             price: d["May-96"],
+    //                             date: "May-96"                               
+    //                           }});
+    // var totalstatedata = d3.merge([processedstatedata1, processedstatedata2]);
+
+    //   console.log(totalstatedata);
+
+    
+  var tip = d3.tip()
+            .attr('class', 'd3-tip')
+            .offset([60, 130]) //Put the tooltip position to the right of the country
+            .html(function(d) {
+              return "<strong>Name </strong><span class='details'>" + stateByname[d.id] + "<br></span>" + "<strong>Theta: </strong><span class='details'>" + ThetaByIdAll[d.id] + "</span>";
+            });
 
  g.append("g")
       .attr("id", "counties")
@@ -84,10 +173,12 @@ d3.json("https://gist.githubusercontent.com/mbostock/4090846/raw/d534aba16920754
   g.append("g")
       .attr("id", "states")
     .selectAll("path")
-      .data(topojson.feature(us, us.objects.states).features)
+    .data(topojson.feature(us, us.objects.states).features)
     .enter().append("path")
-  .attr("d", path)
-  .attr("class", "state")
+    .attr("d", path)
+    .attr("class", "state")
+    .attr("fill", function(d) {return color(ThetaByIdAll[d.id]);})
+    .style("opacity", 0.8)
       .on("dblclick", clicked)
       // .on("mouseover", handleMouseOver)
       .on("mouseout", handleMouseOut)
@@ -99,6 +190,23 @@ d3.json("https://gist.githubusercontent.com/mbostock/4090846/raw/d534aba16920754
       .attr("id", "state-borders")
       .attr("d", path);
 
+  g.call(tip);
+
+function countyclicked(d) {
+
+d3.select(this).style("fill","orange");
+// tooltip.style("visibility", "visible")
+//         .text(d.id);
+}
+
+function stateclicked(d) {
+
+d3.select(this).style("opacity",1);
+tip.show(d);
+// tooltip.style("visibility", "visable")
+//         .text(stateByname[d.id] + " " +ThetaByIdAll[d.id]);
+}
+
 // function handleMouseOver(d) {  
 
 // d3.select(this).style("fill","orange");
@@ -107,10 +215,12 @@ d3.json("https://gist.githubusercontent.com/mbostock/4090846/raw/d534aba16920754
 
 function handleMouseOut(d) {
 
-d3.select(this).style("fill", "#aaa");
+tip.hide(d);
+d3.select(this).style("opacity",0.8);
+d3.select(this).attr("stroke-width", 1);
 
 }
-});
+}
 
 
 function clicked(d) {
@@ -167,19 +277,6 @@ function countystateclicked(d) {
       .style("stroke-width", 1.5 / k + "px");
 }
 
-function countyclicked(d) {
-
-  d3.select(this).style("fill","orange");
-  tooltip.style("visibility", "visible")
-          .text(d.id);
-}
-
-function stateclicked(d) {
-
-  d3.select(this).style("fill","orange");
-  tooltip.style("visibility", "visable")
-          .text(d.id);
-}
 
 
 </script>
