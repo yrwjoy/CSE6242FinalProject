@@ -61,6 +61,9 @@ var color = d3.scale.threshold()
                     // .domain([50, 200, 400, 800, 1500, 2500, 4000, 6500])
                     .range(["#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#4292c6", "#2171b5","#08519c","#08306b"]);
 
+var colorcounty = d3.scale.threshold()
+                    .range(["#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#4292c6", "#2171b5","#08519c","#08306b"]);
+
 var projection = d3.geo.albersUsa()
     .scale(1070)
     .translate([width / 2, height / 2]);
@@ -95,9 +98,12 @@ function ready(error, us, statedata, countydata) {
     var stateByname = {};
     var ThetaByIdAll = {};
     var PriceByIdAll = {};
+    var ThetaByIdcountyAll = {};
+    var PriceByIdcountyAll = {};
     var countyById = {};
     var countyByname = {};
     var maxtheta = 0, maxprice= 0;
+    var maxthetacounty = 0, maxpricecounty= 0;
 
     statedata.forEach(function(d){
       stateById[d.RegionID] = +d.RegionID;
@@ -113,8 +119,23 @@ function ready(error, us, statedata, countydata) {
       }});
       
     countydata.forEach(function(d){
-      countyById[d.RegionID] = +d.RegionID;
-      countyByname[d.RegionID] = d.RegionName;});
+      countyById[d.RegionId] = +d.RegionId;
+      countyByname[d.RegionId] = d.RegionName;
+      if(d.housetype == "Allhome") {
+      ThetaByIdcountyAll[d.RegionId] = +d.Theta;};
+      if(d.housetype == "Allhome") {
+      PriceByIdcountyAll[d.RegionId] = +d["2018-02"];}
+      if(ThetaByIdcountyAll[d.RegionId]>maxthetacounty) {
+        maxthetacounty = ThetaByIdcountyAll[d.RegionId];}
+      if(PriceByIdcountyAll[d.RegionId]>maxpricecounty) {
+        maxpricecounty = PriceByIdcountyAll[d.RegionId];}
+      });
+
+    var ById = Object.assign({},stateById,countyById);
+    var Byname = Object.assign({},stateByname,countyByname);
+    var ThetaAll = Object.assign({},ThetaByIdAll, ThetaByIdcountyAll);
+    var PriceAll = Object.assign({},PriceByIdAll, PriceByIdcountyAll);
+
 
     var format = d3.time.format("%b-%y").parse;
     // console.log(format("Apr-96"));
@@ -160,8 +181,10 @@ function ready(error, us, statedata, countydata) {
     //   console.log(totalstatedata);
 
   var choice = ["Growth potential", "Current Price"];
-  var choicedata = {"Growth potential": ThetaByIdAll, "Current Price": PriceByIdAll};
+  var choicedata = {"Growth potential": ThetaAll, "Current Price": PriceAll};
+  var choicecountydata = {"Growth potential": ThetaAll, "Current Price": PriceAll};
   var choicecolor = {"Growth potential": maxtheta, "Current Price": maxprice};
+  var choicecolorcounty = {"Growth potential": maxthetacounty, "Current Price": maxpricecounty};
   
   //Define foreignobject to insert select box into svg.
   var foreign = svg.append("foreignObject")
@@ -180,14 +203,17 @@ function ready(error, us, statedata, countydata) {
                       .append("option")
                       .text(function (d) { return d; });
 
-var usethisfunction = ThetaByIdAll;
+var usethisfunction = ThetaAll;
+var usethisfunctioncounty = ThetaByIdcountyAll;
 
 var tip = d3.tip()
             .attr('class', 'd3-tip')
             .offset([60, 130]) //Put the tooltip position to the right of the country
             .html(function(d) {
-              return "<strong>Name </strong><span class='details'>" + stateByname[d.id] + "<br></span>" + "<strong>Data: </strong><span class='details'>" + usethisfunction[d.id] + "</span>";
+              return "<strong>Name </strong><span class='details'>" + Byname[d.id] + "<br></span>" + "<strong>Data: </strong><span class='details'>" + usethisfunction[d.id] + "</span>";
             });
+  
+  colorcounty.domain([0.05*maxthetacounty, 0.1*maxthetacounty, 0.2*maxthetacounty, 0.3*maxthetacounty, 0.4*maxthetacounty, 0.5*maxthetacounty, 0.8*maxthetacounty, maxthetacounty+1]);
 
  g.append("g")
       .attr("id", "counties")
@@ -196,6 +222,8 @@ var tip = d3.tip()
     .enter().append("path")
   .attr("d", path)
   .attr("class", "county-boundary")
+  .style("fill", function(d) {return colorcounty(usethisfunctioncounty[d.id]);})
+  .style("opacity", 0.8)
   .on("dblclick", countystateclicked)
   .on("mouseout", handleMouseOut)
       .on("mouseover", countyclicked);
@@ -225,7 +253,8 @@ var tip = d3.tip()
 
 function countyclicked(d) {
 
-d3.select(this).style("fill","orange");
+d3.select(this).style("opacity",1);
+tip.show(d);
 
 }
 
@@ -245,14 +274,18 @@ d3.select(this).attr("stroke-width", 1);
 function onchange() {
   selectvalue = d3.select("select").property("value");
   usethisfunction = choicedata[selectvalue];
+  usethisfunctioncounty = choicecountydata[selectvalue];
   usethiscolor = choicecolor[selectvalue];
+  usethiscolorcounty = choicecolorcounty[selectvalue];
 
   var tip = d3.tip()
             .attr('class', 'd3-tip')
             .offset([60, 130]) //Put the tooltip position to the right of the country
             .html(function(d) {
-              return "<strong>Name </strong><span class='details'>" + stateByname[d.id] + "<br></span>" + "<strong>Data: </strong><span class='details'>" + usethisfunction[d.id] + "</span>";
+              return "<strong>Name </strong><span class='details'>" + Byname[d.id] + "<br></span>" + "<strong>Data: </strong><span class='details'>" + usethisfunction[d.id] + "</span>";
             });
+
+colorcounty.domain([0.05*usethiscolorcounty, 0.1*usethiscolorcounty, 0.2*usethiscolorcounty, 0.3*usethiscolorcounty, 0.4*usethiscolorcounty, 0.5*usethiscolorcounty, 0.8*usethiscolorcounty, usethiscolorcounty+1]);
 
  g.append("g")
       .attr("id", "counties")
@@ -261,6 +294,8 @@ function onchange() {
     .enter().append("path")
   .attr("d", path)
   .attr("class", "county-boundary")
+  .style("fill", function(d) {return colorcounty(usethisfunctioncounty[d.id]);})
+  .style("opacity", 0.8)
   .on("dblclick", countystateclicked)
   // .on("mouseover", handleMouseOver)
   .on("mouseout", handleMouseOut)
@@ -292,7 +327,8 @@ function onchange() {
 
 function countyclicked(d) {
 
-d3.select(this).style("fill","orange");
+d3.select(this).style("opacity",1);
+tip.show(d);
 // tooltip.style("visibility", "visible")
 //         .text(d.id);
 }
