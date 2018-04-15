@@ -6,15 +6,12 @@
   fill: none;
   pointer-events: all;
 }
-
 #states {
   fill: #aaa;
 }
-
 #states .active {
   display:none;
 }
-
 #state-borders {
   fill: none;
   stroke: #fff;
@@ -23,52 +20,198 @@
   stroke-linecap: round;
   pointer-events: none;
 }
-
 .county-boundary {
   fill: #aaa;
   stroke: #fff;
   stroke-width: .5px;
 }
-
+.d3-tip {
+    line-height: 1.5;
+    font-weight: 400;
+    font-family:"avenir next", Arial, sans-serif;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border-radius: 1px;
+    pointer-events: none;
+    }
 /* .county-boundary:hover, .state:hover {
   fill: orange;
 } */
-
 </style>
 <body>
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script src="http://d3js.org/topojson.v1.min.js"></script>
+<script src="https://d3js.org/d3-queue.v3.min.js"></script>
+<script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
 <script>
-
 var width = 960,
     height = 500,
     centered;
-
+var color = d3.scale.threshold()
+                    // .domain([50, 200, 400, 800, 1500, 2500, 4000, 6500])
+                    .range(["#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#4292c6", "#2171b5","#08519c","#08306b"]);
 var projection = d3.geo.albersUsa()
     .scale(1070)
     .translate([width / 2, height / 2]);
-
 var path = d3.geo.path()
     .projection(projection);
-
 var svg = d3.select("body").append("svg")
     .attr("width", width)
     .attr("height", height);
-
 svg.append("rect")
     .attr("class", "background")
     .attr("width", width)
     .attr("height", height)
     .on("dblclick", clicked);
-
 var g = svg.append("g");
+// var tooltip = d3.select("body")
+// 	.append("div")
+// 	.style("position", "absolute");
+d3.queue()
+    .defer(d3.json, "/static/data/us.json")
+    .defer(d3.csv, "/static/data/state_house_values.csv")
+    .defer(d3.csv, "static/data/county_house_values.csv")
+    .await(ready);
+function ready(error, us, statedata, countydata) {
+    var stateById = {};
+    var stateByname = {};
+    var ThetaByIdAll = {};
+    var PriceByIdAll = {};
+    var countyById = {};
+    var countyByname = {};
+    var maxtheta = 0, maxprice= 0;
+    statedata.forEach(function(d){
+      stateById[d.RegionID] = +d.RegionID;
+      stateByname[d.RegionID] = d.RegionName;
+      if(d.Housetype == "Allhome") {
+      ThetaByIdAll[d.RegionID] = +d.Theta;};
+      if(ThetaByIdAll[d.RegionID]>maxtheta) {
+        maxtheta = ThetaByIdAll[d.RegionID];}
+      if(d.Housetype == "Allhome") {
+      PriceByIdAll[d.RegionID] = +d["Feb-18"];}
+      if(PriceByIdAll[d.RegionID]>maxprice) {
+        maxprice = PriceByIdAll[d.RegionID];
+      }});
 
-var tooltip = d3.select("body")
-	.append("div")
-	.style("position", "absolute");
+    countydata.forEach(function(d){
+      countyById[d.RegionID] = +d.RegionID;
+      countyByname[d.RegionID] = d.RegionName;});
+    var format = d3.time.format("%b-%y").parse;
+    // console.log(format("Apr-96"));
 
-d3.json("https://gist.githubusercontent.com/mbostock/4090846/raw/d534aba169207548a8a3d670c9c2cc719ff05c47/us.json", function(error, us) {
+    var alldate = ["Apr-96", "May-96", "Jun-96", "Jul-96", "Aug-96","Sep-96","Oct-96","Nov-96", "Dec-96",
+              "Jan-97", "Feb-97", "Mar-97", "Apr-97", "May-97", "Jun-97", "Jul-97", "Aug-97","Sep-97","Oct-97","Nov-97", "Dec-97",
+              "Jan-98", "Feb-98", "Mar-98", "Apr-98", "May-98", "Jun-98", "Jul-98", "Aug-98","Sep-98","Oct-98","Nov-98", "Dec-98",
+              "Jan-99", "Feb-99", "Mar-99", "Apr-99", "May-99", "Jun-99", "Jul-99", "Aug-99","Sep-99","Oct-99","Nov-99", "Dec-99",
+              "Jan-00", "Feb-00", "Mar-00", "Apr-00", "May-00", "Jun-00", "Jul-00", "Aug-00","Sep-00","Oct-00","Nov-00", "Dec-00",
+              "Jan-01", "Feb-01", "Mar-01", "Apr-01", "May-01", "Jun-01", "Jul-01", "Aug-01","Sep-01","Oct-01","Nov-01", "Dec-01", ];
+    // var processedstatedata = [];
+    //                   for (i=0;i<alldate.length;i++) {
+    //                         processedstatedata.push(statedata.map(function(d){
+    //                             return {
+    //                             name: d.RegionName,
+    //                             type: d.Housetype,
+    //                             id: d.RegionID,
+    //                             price: d[alldate[i]],
+    //                             date: alldate[i]
+    //                           }
+    //                      }))};
+    // var processedstatedata1 = statedata.map(function(d){
+    //                             return {
+    //                             name: d.RegionName,
+    //                             type: d.Housetype,
+    //                             id: d.RegionID,
+    //                             price: d["Apr-96"],
+    //                             date: "Apr-96"
+    //                           }});
+    // var processedstatedata2 = statedata.map(function(d){
+    //                             return {
+    //                             name: d.RegionName,
+    //                             type: d.Housetype,
+    //                             id: d.RegionID,
+    //                             price: d["May-96"],
+    //                             date: "May-96"
+    //                           }});
+    // var totalstatedata = d3.merge([processedstatedata1, processedstatedata2]);
+    //   console.log(totalstatedata);
+  var choice = ["Growth potential", "Current Price"];
+  var choicedata = {"Growth potential": ThetaByIdAll, "Current Price": PriceByIdAll};
+  var choicecolor = {"Growth potential": maxtheta, "Current Price": maxprice};
 
+  //Define foreignobject to insert select box into svg.
+  var foreign = svg.append("foreignObject")
+                    .attr("x",width/2)
+                    .attr("y",0)
+                    .attr("width",140)
+                    .attr("height",28)
+                    .append("xhtml:body");
+  //Define select box and its options.
+  var select = foreign.append("select")
+                      .attr("class","select")
+                      .on("change",onchange);
+  var options = select.selectAll("option")
+                      .data(choice).enter()
+                      .append("option")
+                      .text(function (d) { return d; });
+var usethisfunction = ThetaByIdAll;
+var tip = d3.tip()
+            .attr('class', 'd3-tip')
+            .offset([60, 130]) //Put the tooltip position to the right of the country
+            .html(function(d) {
+              return "<strong>Name </strong><span class='details'>" + stateByname[d.id] + "<br></span>" + "<strong>Data: </strong><span class='details'>" + usethisfunction[d.id] + "</span>";
+            });
+ g.append("g")
+      .attr("id", "counties")
+    .selectAll("path")
+      .data(topojson.feature(us, us.objects.counties).features)
+    .enter().append("path")
+  .attr("d", path)
+  .attr("class", "county-boundary")
+  .on("dblclick", countystateclicked)
+  .on("mouseout", handleMouseOut)
+      .on("mouseover", countyclicked);
+
+  color.domain([0.05*maxtheta, 0.1*maxtheta, 0.2*maxtheta, 0.3*maxtheta, 0.4*maxtheta, 0.5*maxtheta, 0.8*maxtheta, maxtheta+1]);
+  g.append("g")
+      .attr("id", "states")
+    .selectAll("path")
+    .data(topojson.feature(us, us.objects.states).features)
+    .enter().append("path")
+    .attr("d", path)
+    .attr("class", "state")
+    .attr("fill", function(d) {return color(usethisfunction[d.id]);})
+    .style("opacity", 0.8)
+      .on("dblclick", clicked)
+      .on("mouseout", handleMouseOut)
+      .on("mouseover", stateclicked);
+  g.append("path")
+      .datum(topojson.mesh(us, us.objects.states, function(a, b) { return a !== b; }))
+      .attr("id", "state-borders")
+      .attr("d", path);
+  g.call(tip);
+function countyclicked(d) {
+d3.select(this).style("fill","orange");
+}
+function stateclicked(d) {
+d3.select(this).style("opacity",1);
+tip.show(d);
+}
+function handleMouseOut(d) {
+tip.hide(d);
+d3.select(this).style("opacity",0.8);
+d3.select(this).attr("stroke-width", 1);
+}
+function onchange() {
+  selectvalue = d3.select("select").property("value");
+  usethisfunction = choicedata[selectvalue];
+  usethiscolor = choicecolor[selectvalue];
+  var tip = d3.tip()
+            .attr('class', 'd3-tip')
+            .offset([60, 130]) //Put the tooltip position to the right of the country
+            .html(function(d) {
+              return "<strong>Name </strong><span class='details'>" + stateByname[d.id] + "<br></span>" + "<strong>Data: </strong><span class='details'>" + usethisfunction[d.id] + "</span>";
+            });
  g.append("g")
       .attr("id", "counties")
     .selectAll("path")
@@ -80,42 +223,47 @@ d3.json("https://gist.githubusercontent.com/mbostock/4090846/raw/d534aba16920754
   // .on("mouseover", handleMouseOver)
   .on("mouseout", handleMouseOut)
       .on("mouseover", countyclicked);
-
+  color.domain([0.05*usethiscolor, 0.1*usethiscolor, 0.2*usethiscolor, 0.3*usethiscolor, 0.4*usethiscolor, 0.5*usethiscolor, 0.8*usethiscolor, usethiscolor+1]);
   g.append("g")
       .attr("id", "states")
     .selectAll("path")
-      .data(topojson.feature(us, us.objects.states).features)
+    .data(topojson.feature(us, us.objects.states).features)
     .enter().append("path")
-  .attr("d", path)
-  .attr("class", "state")
+    .attr("d", path)
+    .attr("class", "state")
+    .attr("fill", function(d) {return color(usethisfunction[d.id]);})
+    .style("opacity", 0.8)
       .on("dblclick", clicked)
       // .on("mouseover", handleMouseOver)
       .on("mouseout", handleMouseOut)
       .on("mouseover", stateclicked);
-
-
   g.append("path")
       .datum(topojson.mesh(us, us.objects.states, function(a, b) { return a !== b; }))
       .attr("id", "state-borders")
       .attr("d", path);
-
-// function handleMouseOver(d) {  
-
-// d3.select(this).style("fill","orange");
-
-// }
-
-function handleMouseOut(d) {
-
-d3.select(this).style("fill", "#aaa");
-
+  g.call(tip);
+function countyclicked(d) {
+d3.select(this).style("fill","orange");
+// tooltip.style("visibility", "visible")
+//         .text(d.id);
 }
-});
-
-
+function stateclicked(d) {
+d3.select(this).style("opacity",1);
+tip.show(d);
+// tooltip.style("visibility", "visable")
+//         .text(stateByname[d.id] + " " +ThetaByIdAll[d.id]);
+}
+// function handleMouseOver(d) {
+// d3.select(this).style("fill","orange");
+// }
+function handleMouseOut(d) {
+tip.hide(d);
+d3.select(this).style("opacity",0.8);
+d3.select(this).attr("stroke-width", 1);
+}
+}}
 function clicked(d) {
   var x, y, k;
-
   if (d && centered !== d) {
     var centroid = path.centroid(d);
     x = centroid[0];
@@ -128,21 +276,17 @@ function clicked(d) {
     k = 1;
     centered = null;
   }
-
   g.selectAll("path")
       .classed("active", centered && function(d) { return d === centered; });
-  
-    console.log([x,y]);
 
+    console.log([x,y]);
   g.transition()
       .duration(750)
       .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")scale(" + k + ")translate(" + -x + "," + -y + ")")
       .style("stroke-width", 1.5 / k + "px");
 }
-
 function countystateclicked(d) {
   var x, y, k;
-
   if (d && centered !== d) {
     var centroid = path.centroid(d);
     x = centroid[0];
@@ -155,32 +299,12 @@ function countystateclicked(d) {
     k = 1;
     centered = null;
   }
-
   g.selectAll("path")
       .classed("active", centered && function(d) { return d === centered; });
-
     console.log([x,y]);
-
   g.transition()
       .duration(750)
       .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")scale(" + k + ")translate(" + -480 + "," + -250 + ")")
       .style("stroke-width", 1.5 / k + "px");
 }
-
-function countyclicked(d) {
-
-  d3.select(this).style("fill","orange");
-  tooltip.style("visibility", "visible")
-          .text(d.id);
-}
-
-function stateclicked(d) {
-
-  d3.select(this).style("fill","orange");
-  tooltip.style("visibility", "visable")
-          .text(d.id);
-}
-
-
 </script>
-
