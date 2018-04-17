@@ -45,6 +45,7 @@
 <script src="https://d3js.org/d3-queue.v3.min.js"></script>
 <script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
 <script>
+var URL_BASE = "http://127.0.0.1:5000/data"
 var width = 960,
     height = 500,
     centered;
@@ -196,6 +197,9 @@ d3.select(this).style("fill","orange");
 function stateclicked(d) {
 d3.select(this).style("opacity",1);
 tip.show(d);
+console.log(d);
+var url = update_url(d.id);
+getData(url);
 }
 function handleMouseOut(d) {
 tip.hide(d);
@@ -306,5 +310,15 @@ function countystateclicked(d) {
       .duration(750)
       .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")scale(" + k + ")translate(" + -480 + "," + -250 + ")")
       .style("stroke-width", 1.5 / k + "px");
+}
+function update_url(id) {
+    console.log(id)
+    return URL_BASE + "?id=" + id;
+}
+function getData(url) {
+    console.log(url)
+    d3.csv(url, function(error, data) {
+        console.log(data)
+    })
 }
 </script>
