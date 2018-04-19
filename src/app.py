@@ -55,6 +55,27 @@ def print_data():
     cur.close()
     return header + '\n'.join(str_rows)
 
+@app.route("/getregionname")
+def get_region_name():
+    cur = get_db().cursor()
+    try:
+        id = request.args.get("id")
+        print(id)
+    except ValueError:
+        return "error here"
+    result = execute_query(
+        """SELECT NAME
+            FROM REGION
+            WHERE ID = ?""",
+            (id,)
+    )
+    str_rows = [','.join(map(str, row)) for row in result]
+
+    header = 'time, value\n'
+    cur.close()
+
+    return 'name\n' + result[0][0]
+
 
 
 
