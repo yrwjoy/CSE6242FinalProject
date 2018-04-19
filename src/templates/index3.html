@@ -40,13 +40,17 @@
 } */
 </style>
 <body>
-<script src="http://d3js.org/d3.v3.min.js"></script>
-<script src="http://d3js.org/topojson.v1.min.js"></script>
-<script src="https://d3js.org/d3-queue.v3.min.js"></script>
-<script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+    <div id="option_category", class="relative"></div>
+
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="http://d3js.org/topojson.v1.min.js"></script>
+    <script src="https://d3js.org/d3-queue.v3.min.js"></script>
+    <script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
 <script>
 var URL_BASE = "http://127.0.0.1:5000/data"
 var URL_GET_REGION_NAME = "http://127.0.0.1:5000/getregionname"
+var URL_GET_LINECHART_DATA = "http://127.0.0.1:5000/linechart"
+
 
 var width = 960,
     height = 500,
@@ -205,7 +209,7 @@ function ready(error, us, statedata, countydata) {
         })
         .style("opacity", 0.8)
         .on("dblclick", clicked)
-        // .on("click", stateSingleClicked)
+        .on("click", plotLineChartSvg)
         .on("mouseout", handleMouseOut)
         .on("mouseover", stateclicked);
 
@@ -349,6 +353,85 @@ function countystateclicked(d) {
       .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")scale(" + k + ")translate(" + -480 + "," + -250 + ")")
       .style("stroke-width", 1.5 / k + "px");
 }
+
+function plotLineChartSvg(d) {
+    var regionID = Math.floor(d.id);
+    d3.select("#lineChartSvg").remove();
+    var width = 960,
+        height = 500,
+        centered;
+
+    var lineChartSvg = d3.select("body").append("svg")
+        .attr("id", "lineChartSvg")
+        .attr("width", width)
+        .attr("height", height);
+
+    var select_category_foreign_object = lineChartSvg.append("foreignObject")
+        .attr("x",width/2)
+        .attr("y",0)
+        .attr("width",140)
+        .attr("height",28)
+        .append("xhtml:body");
+
+    var select_housetype_foreign_object = lineChartSvg.append("foreignObject")
+        .attr("x",width/2 + 150)
+        .attr("y",0)
+        .attr("width",140)
+        .attr("height",28)
+        .append("xhtml:body");
+
+
+    var select_category = select_category_foreign_object
+        .append('select')
+        .attr("id", "select_category")
+        .on('change', gatherLineChartDataTriggeredByHousetype)
+    var category_names = ['housetype', 'bedroom'];
+
+    var category_options = select_category
+        .selectAll('option')
+        .data(category_names).enter()
+        .append('option')
+        .text(function (d) { return d; })
+        .attr('value', function(d) {return d;});
+
+    var select_houseType = select_housetype_foreign_object
+        .append('select')
+        .attr("id", "select_housetype")
+        .on('change', gatherLineChartDataTriggeredByHousetype)
+    var housetype_names = ['one', 'two', 'three', 'four', 'five'];
+
+    var housetype_options = select_houseType
+        .selectAll('option')
+        .data(housetype_names).enter()
+        .append('option')
+        .text(function (d) { return d; })
+        .attr('regionid', function(d) {return regionID; })
+        .attr('value', function(d) {return [regionID, d];});
+
+}
+
+function gatherLineChartDataTriggeredByHousetype(d) {
+    // var regionID = d3.select('#select_housetype').property('regionid')
+    var category = d3.select('#select_category').property('value')
+    var id_housetype = d3.select('#select_housetype').property('value').split(",")
+    var regionID = id_housetype[0]
+    var housetype = id_housetype[1]
+    console.log(category)
+    console.log(housetype)
+    console.log(regionID)
+    var url = URL_GET_LINECHART_DATA + "?id=" + regionID + "&category=" + category + "&housetype=" + housetype;
+    console.log(url)
+    d3.csv(url, function(error, data) {
+        console.log(data)
+        plotLineChart(data)
+    })
+
+}
+
+function plotLineChart(data) {
+}
+
+
 function update_url(id) {
     console.log(id)
     return URL_BASE + "?id=" + id;
@@ -361,4 +444,5 @@ function getRegionName(url) {
     })
     return regionName;
 }
+
 </script>

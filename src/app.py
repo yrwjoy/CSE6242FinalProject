@@ -35,20 +35,32 @@ def homepage():
 def mainpage():
     print("i am here")
     return render_template('index3.html')
-@app.route("/data")
+
+@app.route("/linechart")
 def print_data():
     cur = get_db().cursor()
     try:
         id = request.args.get("id")
+        category = request.args.get("category")
+        housetype = request.args.get("housetype")
         print(id)
+        print(category)
+        print(housetype)
+
     except ValueError:
         return "error here"
     result = execute_query(
         """SELECT TIME, VALUE
-            FROM HOUSE_VALUE_BY_MONTH
-            WHERE region_id = ? AND HOUSETYPE_ID= 1""",
-            (id,)
+            FROM
+            (SELECT ID AS SELECTED_HOUSETYPE_ID
+            FROM HOUSE_TYPE
+            WHERE CATEGORY = ? AND HOUSE_TYPE = ?) LEFT JOIN  HOUSE_VALUE_BY_MONTH
+            ON SELECTED_HOUSETYPE_ID = HOUSETYPE_ID
+            WHERE region_id = ?""",
+            (category,housetype,id)
     )
+
+    print result
     str_rows = [','.join(map(str, row)) for row in result]
 
     header = 'time, value\n'
