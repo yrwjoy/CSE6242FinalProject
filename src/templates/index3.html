@@ -35,6 +35,18 @@
     border-radius: 1px;
     pointer-events: none;
     }
+
+.axis path,
+.axis line{
+    fill: none;
+    stroke: black;
+    shape-rendering: crispEdges;
+}
+
+.axis text {
+    font-family: sans-serif;
+    font-size: 11px;
+}
 /* .county-boundary:hover, .state:hover {
   fill: orange;
 } */
@@ -46,10 +58,16 @@
     <script src="http://d3js.org/topojson.v1.min.js"></script>
     <script src="https://d3js.org/d3-queue.v3.min.js"></script>
     <script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+    <script src="https://d3js.org/d3-time.v1.min.js"></script>
+    <script src="https://d3js.org/d3-time-format.v2.min.js"></script>
 <script>
+
 var URL_BASE = "http://127.0.0.1:5000/data"
 var URL_GET_REGION_NAME = "http://127.0.0.1:5000/getregionname"
 var URL_GET_LINECHART_DATA = "http://127.0.0.1:5000/linechart"
+var URL_GET_Y_SCALE = "http://127.0.0.1:5000/yscale"
+
+var num_of_lines = 0;
 
 
 var width = 960,
@@ -59,6 +77,8 @@ var width = 960,
 var color = d3.scale.threshold()
                     // .domain([0, 2000])
                     .range(["#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#4292c6", "#2171b5","#08519c","#08306b"]);
+var lineColor = {housetype: {Allhome: '#d73027', Condo: '#fc8d59', SFR: '#fee090'}, bedroom: {one: '#e0f3f8', two: '#91bfdb', three: '#4575b4', four: '#2171b5', five: 'black'}}
+
 var projection = d3.geo.albersUsa()
     .scale(1070)
     .translate([width / 2, height / 2]);
@@ -354,31 +374,121 @@ function countystateclicked(d) {
       .style("stroke-width", 1.5 / k + "px");
 }
 
+var linechart_svg_width = 660,
+    linechart_svg_height = 300,
+    centered;
+var linechart_svg_margin = {top: 100, bottom:100, left:100, right: 200}
+
 function plotLineChartSvg(d) {
     var regionID = Math.floor(d.id);
     d3.select("#lineChartSvg").remove();
-    var width = 960,
-        height = 500,
-        centered;
+    d3.select('#boxSvg').remove();
+
+    var boxSvg = d3.select("body").append("svg")
+        .attr("id", "boxSvg")
+        .attr("width", linechart_svg_width + linechart_svg_margin.left + linechart_svg_margin.right)
+        .attr("height", 30);
+
 
     var lineChartSvg = d3.select("body").append("svg")
         .attr("id", "lineChartSvg")
-        .attr("width", width)
-        .attr("height", height);
+        .attr("width", linechart_svg_width + linechart_svg_margin.left + linechart_svg_margin.right)
+        .attr("height", linechart_svg_height + linechart_svg_margin.top + linechart_svg_margin.bottom);
 
-    var select_category_foreign_object = lineChartSvg.append("foreignObject")
-        .attr("x",width/2)
+    var select_category_foreign_object = boxSvg.append("foreignObject")
+        .attr("x", 450)
+        .attr("y",0)
+        .attr("width",100)
+        .attr("height",28)
+        .append("xhtml:body");
+
+    var select_housetype_foreign_object = boxSvg.append("foreignObject")
+        .attr("x",550)
+        .attr("y",0)
+        .attr("width",100)
+        .attr("height",28)
+        .append("xhtml:body");
+
+    var select_from_yr_mo_foreign_object = boxSvg.append("foreignObject")
+        .attr("x", linechart_svg_margin.left)
+        .attr("y",0)
+        .attr("width",140)
+        .attr("height",28)
+        .append("xhtml:body");
+    select_from_yr_mo_foreign_object.append('text').text('FROM:  ')
+
+    var select_to_yr_mo_foreign_object = boxSvg.append("foreignObject")
+        .attr("x", 280)
+        .attr("y",0)
+        .attr("width",120)
+        .attr("height",28)
+        .append("xhtml:body");
+    select_to_yr_mo_foreign_object.append('text').text('TO:  ')
+
+
+
+    var select_display_data_foreign_object = boxSvg.append("foreignObject")
+        .attr("x", 650)
         .attr("y",0)
         .attr("width",140)
         .attr("height",28)
         .append("xhtml:body");
 
-    var select_housetype_foreign_object = lineChartSvg.append("foreignObject")
-        .attr("x",width/2 + 150)
+    var checkbox_foreign_object = boxSvg.append("foreignObject")
+        .attr("x", 770)
         .attr("y",0)
         .attr("width",140)
         .attr("height",28)
-        .append("xhtml:body");
+        .append("xhtml:body")
+        .append('text').text('compare')
+
+    var checkbox_foreign_object = boxSvg.append("foreignObject")
+        .attr("x", 830)
+        .attr("y",0)
+        .attr("width",140)
+        .attr("height",28)
+        .append("xhtml:body")
+        .html("<form><input type=checkbox id=checkbox /></form>").on("change",uncheck);
+
+
+    checkbox_foreign_object.append('checkbox').attr('type', 'checkbox').attr('id', 'checkbox')
+
+    select_display_data_foreign_object.append('text').text('points:')
+
+    var select_display_data = select_display_data_foreign_object
+        .append('select')
+        .attr("id", "select_display_data");
+        // .on('change', gatherLineChartDataTriggeredByHousetype)
+
+
+    select_display_data.selectAll('option').data(["hide", 'show']).enter().append('option')
+        .text(function (d) { return d;})
+        .attr('value', function(d) {return d;});
+
+
+    var select_from_yr = select_from_yr_mo_foreign_object
+        .append('select')
+        .attr("id", "select_from_yr")
+        .on('change', gatherLineChartDataTriggeredByHousetype)
+
+    var select_to_yr = select_to_yr_mo_foreign_object
+        .append('select')
+        .attr("id", "select_to_yr")
+        .on('change', gatherLineChartDataTriggeredByHousetype)
+
+    Array.range = (start, end) => Array.from({length: (end - start)}, (v, k) => end - k);
+    var years = Array.range(1996, 2018)
+    // console.log(moment.months())
+
+
+    select_from_yr.selectAll('option').data(years).enter().append('option')
+        .text(function (d) { return d;})
+        .attr('value', function(d) {return d;});
+
+    select_to_yr.selectAll('option').data(years).enter().append('option')
+        .text(function (d) { return d;})
+        .attr('value', function(d) {return d;});
+
 
 
     var select_category = select_category_foreign_object
@@ -396,39 +506,294 @@ function plotLineChartSvg(d) {
 
     var select_houseType = select_housetype_foreign_object
         .append('select')
+        // .attr("transform", "translate(" + 200 + "," + 0 + ")")
         .attr("id", "select_housetype")
         .on('change', gatherLineChartDataTriggeredByHousetype)
-    var housetype_names = ['one', 'two', 'three', 'four', 'five'];
+    var housetype_names = ['Allhome', 'Condo', 'SFR']
 
     var housetype_options = select_houseType
         .selectAll('option')
         .data(housetype_names).enter()
         .append('option')
         .text(function (d) { return d; })
-        .attr('regionid', function(d) {return regionID; })
+        // .attr('regionid', function(d) {return regionID; })
         .attr('value', function(d) {return [regionID, d];});
 
+}
+
+
+function cleanChart() {
+    d3.select('#lineChartSvg').selectAll('#lineChartSvg > *').remove()
+    num_of_lines = 0;
+}
+
+function uncheck() {
+    if (! d3.select('#checkbox').property('checked')) {
+        cleanChart();
+    }
 }
 
 function gatherLineChartDataTriggeredByHousetype(d) {
     // var regionID = d3.select('#select_housetype').property('regionid')
     var category = d3.select('#select_category').property('value')
+
     var id_housetype = d3.select('#select_housetype').property('value').split(",")
+    var from_yr = d3.select('#select_from_yr').property('value')
+    var to_yr = d3.select('#select_to_yr').property('value')
     var regionID = id_housetype[0]
     var housetype = id_housetype[1]
+    var compare = d3.select('#checkbox').property('checked')
+
+
     console.log(category)
     console.log(housetype)
     console.log(regionID)
-    var url = URL_GET_LINECHART_DATA + "?id=" + regionID + "&category=" + category + "&housetype=" + housetype;
+    console.log(from_yr)
+    console.log(to_yr)
+
+    var housetype_names = ['Allhome', 'Condo', 'SFR']
+    var numOfBedrooms = ['one', 'two', 'three', 'four', 'five'];
+    var needClean = false;
+    if (category == 'bedroom' && housetype_names.includes(housetype)) {
+        console.log('switch to bedroom!')
+        needClean = true
+        d3.select('#select_housetype').selectAll('option').remove()
+        d3.select('#select_housetype').selectAll('option')
+                .data(numOfBedrooms).enter()
+                .append('option')
+                .text(function (d) { return d; })
+                .attr('value', function(d) {return [regionID, d];});
+        housetype = numOfBedrooms[0];
+
+    } else if (category == 'housetype' && numOfBedrooms.includes(housetype)) {
+        needClean = true
+        d3.select('#select_housetype').selectAll('option').remove()
+        d3.select('#select_housetype').selectAll('option')
+            .data(housetype_names).enter()
+            .append('option')
+            .text(function (d) { return d; })
+            .attr('value', function(d) {return [regionID, d];});
+        housetype = housetype_names[0];
+    }
+    var parameters = "?id=" + regionID + "&category=" + category + "&housetype=" + housetype
+        + '&fromyr=' + from_yr + '&toyr=' + to_yr;
+    var url = URL_GET_LINECHART_DATA + parameters;
     console.log(url)
-    d3.csv(url, function(error, data) {
+    // d3.csv(url, function(error, data) {
+    //
+    //     plotLineChart(data)
+    // })
+
+    var parseTime = d3.time.format("%Y-%m-%d").parse
+    d3.csv(url, function(d) {
+        d.time = parseTime(d.time.split(" ")[0]);
+        d.value= +d.value;
+        return d;
+    }, function(error, data) {
+        if (error) throw error;
         console.log(data)
-        plotLineChart(data)
-    })
+
+        if (data.length == 0) {
+            alert("No Data found")
+            cleanChart();
+
+        } else {
+            if (compare && !needClean) {
+                d3.select("#xAxis").remove()
+                d3.select('#yAxis').remove()
+                d3.select('#xAxis_name').remove()
+                d3.select('#yAxis_name').remove()
+                num_of_lines += 1;
+                plotLineChart(data, regionID, category, housetype, from_yr, to_yr, compare);
+            } else {
+                cleanChart()
+                plotLineChart(data, regionID, category, housetype, from_yr, to_yr, compare);
+
+            }
+        }
+
+    });
 
 }
 
-function plotLineChart(data) {
+
+function plotLineChart(data, regionID, category, housetype, from_yr, to_yr, compare) {
+
+    var times = []
+    var prices = []
+    for (var idx in data) {
+        times.push(data[idx].time)
+        prices.push(data[idx].value)
+    }
+    // console.log(data)
+    // console.log(data.price)
+
+    // var parseTime = d3.time.format("%Y-%m-%d").parse
+
+    var url = URL_GET_Y_SCALE + "?id=" + regionID + "&category=" + category + "&housetype=" + housetype
+        + '&fromyr=' + from_yr + '&toyr=' + to_yr;
+
+    d3.csv(url, function(d) {
+        d.minY = +d.minY;
+        d.maxY= +d.maxY;
+        return d;
+    }, function(error, yDomain) {
+
+        console.log(yDomain)
+
+        var xScale = d3.time.scale()
+            .domain(d3.extent(data, function(d) { return d.time; }))
+            .range([0, linechart_svg_width])
+
+
+
+
+        var yScale = d3.scale.linear()
+            .range([linechart_svg_height, 0]);
+        if (true) {
+        // if (compare) {
+            yScale.domain([yDomain[0].minY, yDomain[0].maxY]);
+
+        } else {
+            console.log(prices)
+            yScale.domain([d3.min(prices), d3.max(prices)]);
+        }
+            // .domain([0, 600000])
+
+        var xAxis = d3.svg.axis()
+            .scale(xScale)
+            .orient('bottom')
+            .ticks(6);
+        var yAxis = d3.svg.axis()
+            .scale(yScale)
+            .orient('left')
+            .ticks(5);
+
+        var linearGenerator=d3.svg.line()
+            .x(function(d){
+
+                return xScale(d.time);
+            })
+            .y(function(d){return yScale(d.value);});
+
+
+
+        var g = d3.select('#lineChartSvg').append("g")
+            .attr("transform", "translate(" + linechart_svg_margin.left + "," + linechart_svg_margin.top + ")")
+            .attr("id", "line_plot");
+
+        d3.select('#lineChartSvg').append("g")
+            .attr('id', 'xAxis')
+            .attr('class', 'axis')
+            .attr("transform", "translate(" + linechart_svg_margin.left +"," + (linechart_svg_height + linechart_svg_margin.top) + ")")
+            .style("text-anchor", "middle")
+            .call(xAxis);
+
+        d3.select('#lineChartSvg').append("g")
+            .attr('id', 'yAxis')
+            .attr('class', 'axis')
+            .attr("transform", "translate(" + linechart_svg_margin.left + "," + linechart_svg_margin.top + ")")
+            .call(yAxis);
+
+        d3.select('#lineChartSvg').append("text")
+            .attr("class","g")
+            .attr("id", "xAxis_name")
+            .attr("dy", 30)
+            .attr("transform", "translate(" + (linechart_svg_margin.left + linechart_svg_width/2) + "," + (linechart_svg_height + linechart_svg_margin.top) + ")")
+            .style("font-size","13px")
+            .text("Time");
+
+        d3.select('#lineChartSvg').append("text")
+            .attr("class","g")
+            .attr("id", "yAxis_name")
+            .attr("dx",-80)
+            // .attr("transform", "rotate(-90)")
+            .attr("transform", "translate(" + (linechart_svg_margin.left) + "," + (linechart_svg_height/2 + linechart_svg_margin.top) + ")")
+            .style("font-size","11px")
+            .text("Price");
+
+        g.append("path")
+            .datum(data)
+            .attr("class","line")
+            .attr('stroke', lineColor[category][housetype])
+            .attr('stroke-width', '2')
+            .attr('fill', 'none')
+            .attr("d", linearGenerator);
+
+        var legend = d3.select('#lineChartSvg')
+            // .selectAll(".legend")
+            // .data([0].concat(lineColorScale.quantiles()))
+            // .enter()
+            .append("g")
+            .attr("class", "legend")
+            .attr("transform", function(d, i){
+                return "translate(" + (linechart_svg_width + linechart_svg_margin.left + 20) +","+(40+num_of_lines*16)+")";
+            });
+        legend.append("rect")
+            .attr("width", 20)
+            .attr("height", 2)
+            .attr("fill", function(d,i){
+                return lineColor[category][housetype];
+            });
+        legend.append("text")
+            .data(housetype)
+            .attr("class","g")
+            .attr("dx","0.55cm")
+            .attr("dy","0.15cm")
+            .style("font-size","11px")
+            .text(function(d){return category + ": " + housetype;});
+
+        d3.select("#select_display_data").on("change", gatherLineChartDataTriggeredByHousetype)
+        var show = d3.select("#select_display_data").property('value') == 'show'
+        if (show) {showDataPoints(data, xScale, yScale)}
+
+
+    });
+
+
+
+
+
+
+}
+
+function showDataPoints(data, xScale, yScale) {
+
+    // var xScale = d3.time.scale()
+    //     .domain(d3.extent(data, function(d) { return d.time; }))
+    //     .range([0, linechart_svg_width]);
+    // var yScale = d3.scale.linear()
+    //     .domain([d3.min(prices), d3.max(prices)])
+    //     .range([linechart_svg_height, 0]);
+    var show = d3.select("#select_display_data").property('value') == 'show'
+    console.log(show)
+    if (show) {
+        var tip = d3.tip()
+            .attr('class', 'd3-tip')
+            .offset([30, 30])
+            .html(function(d) {
+                return "<strong>Time </strong><span class='details'>" + (d.time.getFullYear().toString() + "-" + d.time.getMonth().toString())
+                    + "<br></span>" + "<strong>Price: </strong><span class='details'>" + d.value + "</span>";
+                // return "Time: " + d.time.getFullYear().toString() + "-" + d.time.getMonth().toString() + '\n' + "Price: " + d.value;
+            });
+
+
+        var g = d3.select("#line_plot").append("g").attr("id", "points");
+
+        g.selectAll("dot")
+            .data(data)
+            .enter().append("circle")
+            .attr("r", 3.5)
+            .attr("cx", function(d) { return xScale(d.time); })
+            .attr("cy", function(d) { return yScale(d.value); })
+            .on("mouseover", tip.show)
+            .on("mouseout", tip.hide);
+        g.call(tip)
+    } else {
+        d3.select("#points").remove();
+    }
+
+
 }
 
 

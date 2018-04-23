@@ -43,9 +43,15 @@ def print_data():
         id = request.args.get("id")
         category = request.args.get("category")
         housetype = request.args.get("housetype")
+        from_yr = request.args.get("fromyr")
+        to_yr = request.args.get("toyr")
+        from_date = sqlite3.datetime.datetime(int(from_yr), 1, 1, 0, 0)
+        to_date = sqlite3.datetime.datetime(int(to_yr), 1, 1, 0, 0)
         print(id)
         print(category)
         print(housetype)
+        print(from_yr)
+        print(to_yr)
 
     except ValueError:
         return "error here"
@@ -56,15 +62,27 @@ def print_data():
             FROM HOUSE_TYPE
             WHERE CATEGORY = ? AND HOUSE_TYPE = ?) LEFT JOIN  HOUSE_VALUE_BY_MONTH
             ON SELECTED_HOUSETYPE_ID = HOUSETYPE_ID
-            WHERE region_id = ?""",
-            (category,housetype,id)
+            WHERE region_id = ? AND TIME >= ? AND TIME <= ? AND VALUE IS NOT NULL""",
+            (category,housetype,id, from_date, to_date)
     )
 
-    print result
+    domain = execute_query(
+        """SELECT MIN(VALUE), MAX(VALUE)
+            FROM
+            (SELECT ID AS SELECTED_HOUSETYPE_ID
+            FROM HOUSE_TYPE
+            WHERE CATEGORY = ?) LEFT JOIN  HOUSE_VALUE_BY_MONTH
+            ON SELECTED_HOUSETYPE_ID = HOUSETYPE_ID
+            WHERE region_id = ? AND TIME >= ? AND TIME <= ? AND VALUE IS NOT NULL""",
+            (category,id, from_date, to_date)
+    )
+
+    print domain
     str_rows = [','.join(map(str, row)) for row in result]
 
-    header = 'time, value\n'
+    header = 'time,value\n'
     cur.close()
+    print header + '\n'.join(str_rows) + '\n' + str(domain[0][0]) + ',' + str(domain[0][1])
     return header + '\n'.join(str_rows)
 
 @app.route("/getregionname")
@@ -83,10 +101,51 @@ def get_region_name():
     )
     str_rows = [','.join(map(str, row)) for row in result]
 
-    header = 'time, value\n'
+    # header = 'time, price\n'
     cur.close()
 
     return 'name\n' + result[0][0]
+
+@app.route("/yscale")
+def get_yscale():
+    cur = get_db().cursor()
+    try:
+        id = request.args.get("id")
+        category = request.args.get("category")
+        housetype = request.args.get("housetype")
+        from_yr = request.args.get("fromyr")
+        to_yr = request.args.get("toyr")
+        from_date = sqlite3.datetime.datetime(int(from_yr), 1, 1, 0, 0)
+        to_date = sqlite3.datetime.datetime(int(to_yr), 1, 1, 0, 0)
+        print(id)
+        print(category)
+        print(housetype)
+        print(from_yr)
+        print(to_yr)
+
+    except ValueError:
+        return "error here"
+
+    domain = execute_query(
+        """SELECT MIN(VALUE), MAX(VALUE)
+            FROM
+            (SELECT ID AS SELECTED_HOUSETYPE_ID
+            FROM HOUSE_TYPE
+            WHERE CATEGORY = ?) LEFT JOIN  HOUSE_VALUE_BY_MONTH
+            ON SELECTED_HOUSETYPE_ID = HOUSETYPE_ID
+            WHERE region_id = ? AND TIME >= ? AND TIME <= ? AND VALUE IS NOT NULL""",
+        (category, id, from_date, to_date)
+    )
+
+    print domain
+
+    str_rows = [','.join(map(str, row)) for row in domain]
+
+    header = 'minY,maxY\n'
+    cur.close()
+
+    return header + '\n'.join(str_rows)
+
 
 
 
