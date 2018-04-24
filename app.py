@@ -79,7 +79,6 @@ def print_data():
 
     print domain
     str_rows = [','.join(map(str, row)) for row in result]
-
     header = 'time,value\n'
     cur.close()
     print header + '\n'.join(str_rows) + '\n' + str(domain[0][0]) + ',' + str(domain[0][1])
@@ -99,12 +98,38 @@ def get_region_name():
             WHERE ID = ?""",
             (id,)
     )
+  
     str_rows = [','.join(map(str, row)) for row in result]
 
-    # header = 'time, price\n'
     cur.close()
 
     return 'name\n' + result[0][0]
+
+
+@app.route("/getcurrentprice")
+def get_current_price():
+    cur = get_db().cursor()
+    try:
+        id = request.args.get("id")
+        print(id)
+    except ValueError:
+        return "error here"
+    result = execute_query(
+        """SELECT VALUE 
+        from HOUSE_VALUE_BY_MONTH 
+        where REGION_ID = ? and TIME = "2018-02-01 00:00:00" and HOUSETYPE_ID =1""",
+        (id,)
+    )
+    print "------------"
+    print result[0][0]
+
+    # header = 'time, price\n'
+
+    cur.close()
+
+    return 'price\n' + str(result[0][0])
+
+
 
 @app.route("/yscale")
 def get_yscale():
@@ -143,7 +168,6 @@ def get_yscale():
 
     header = 'minY,maxY\n'
     cur.close()
-
     return header + '\n'.join(str_rows)
 
 
