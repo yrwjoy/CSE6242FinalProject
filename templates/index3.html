@@ -77,6 +77,7 @@ var color = d3.scale.threshold()
 
 var colorcounty = d3.scale.threshold()
                     .range(["#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#4292c6", "#2171b5","#08519c","#08306b"]);
+var colorForLegend=["#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#4292c6", "#2171b5","#08519c","#08306b"];
 
 var lineColor = {housetype: {Allhome: '#d73027', Condo: '#fc8d59', SFR: '#fee090'}, bedroom: {one: '#e0f3f8', two: '#91bfdb', three: '#4575b4', four: '#2171b5', five: 'black'}}
 
@@ -202,7 +203,30 @@ function ready(error, us, statedata, countydata) {
         .on("click", plotLineChartSvg)
         .on("mouseout", handleMouseOut)
         .on("mouseover", countyclicked);
-
+  ///////////////////////////Legend for heatmap/////////////////////////////////
+    var MapColorScale= d3.scale.quantile().range(colorForLegend);
+    var legendMap = svg.selectAll(".legendMap")
+                    .data([0].concat(MapColorScale.quantiles()))
+                   .enter().append("g")
+                   .attr("class", "legendMap")
+                   .attr("transform", function(d, i){
+                         return "translate(" + (880)+","+(50+50*i)+")";
+                   });
+    legendMap.append("rect")
+                   .attr("width", 20)
+                   .attr("height", 50)
+                   .attr("fill", function(d,i){
+                    return colorForLegend[i];
+                   });
+    var colordata=[0.05*maxprice, 0.1*maxprice, 0.2*maxprice, 0.3*maxprice, 0.4*maxprice, 0.5*maxprice, 0.8*maxprice, maxprice+1];
+    console.log(colordata);
+    legendMap.append("text")
+              .data(colordata)
+              .attr("x",10)
+              .attr("y",30)
+              .attr("dx", ".65em")
+              .text(function(d) { return Math.round(d); });
+  //////////////////////////Legend finish/////////////////////////
     color.domain([0.05*maxprice, 0.1*maxprice, 0.2*maxprice, 0.3*maxprice, 0.4*maxprice, 0.5*maxprice, 0.8*maxprice, maxprice+1]);
 
     g.append("g")
@@ -250,7 +274,6 @@ function ready(error, us, statedata, countydata) {
         usethisfunctioncounty = choicecountydata[selectvalue];
         usethiscolor = choicecolor[selectvalue];
         usethiscolorcounty = choicecolorcounty[selectvalue];
-        console.log(usethisfunctioncounty)
 
     var tip = d3.tip()
             .attr('class', 'd3-tip')
@@ -274,6 +297,32 @@ function ready(error, us, statedata, countydata) {
         .on("click", plotLineChartSvg)
         .on("mouseout", handleMouseOut)
         .on("mouseover", countyclicked);
+
+///////////////////////////Legend for heatmap/////////////////////////////////
+    d3.selectAll(".legendMap").remove();
+    var MapColorScale= d3.scale.quantile().range(colorForLegend);
+    var legendMap = svg.selectAll(".legendMap")
+                    .data([0].concat(MapColorScale.quantiles()))
+                   .enter().append("g")
+                   .attr("class", "legendMap")
+                   .attr("transform", function(d, i){
+                         return "translate(" + (880)+","+(50+50*i)+")";
+                   });
+    legendMap.append("rect")
+                   .attr("width", 20)
+                   .attr("height", 50)
+                   .attr("fill", function(d,i){
+                    return colorForLegend[i];
+                   });
+    var usecolordata=[0.05*usethiscolor, 0.1*usethiscolor, 0.2*usethiscolor, 0.3*usethiscolor, 0.4*usethiscolor, 0.5*usethiscolor, 0.8*usethiscolor, usethiscolor+1];
+    console.log(usecolordata);
+    legendMap.append("text")
+              .data(usecolordata)
+              .attr("x",10)
+              .attr("y",30)
+              .attr("dx", ".65em")
+              .text(function(d) { return Math.round(d); });
+  //////////////////////////Legend finish/////////////////////////
 
     color.domain([0.05*usethiscolor, 0.1*usethiscolor, 0.2*usethiscolor, 0.3*usethiscolor, 0.4*usethiscolor, 0.5*usethiscolor, 0.8*usethiscolor, usethiscolor+1]);
 
@@ -780,7 +829,7 @@ function showDataPoints(data, xScale, yScale) {
             .attr('class', 'd3-tip')
             .offset([30, 30])
             .html(function(d) {
-                return "<strong>Time </strong><span class='details'>" + (d.time.getFullYear().toString() + "-" + d.time.getMonth().toString())
+                return "<strong>Time </strong><span class='details'>" + (d.time.getFullYear().toString() + "-" + (d.time.getMonth()+1).toString())
                     + "<br></span>" + "<strong>Price: </strong><span class='details'>" + d.value + "</span>";
                 // return "Time: " + d.time.getFullYear().toString() + "-" + d.time.getMonth().toString() + '\n' + "Price: " + d.value;
             });
